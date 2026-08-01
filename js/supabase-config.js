@@ -23,7 +23,7 @@ class DataService {
   constructor() {
     this.initSupabaseClient();
     this.initLocalStorage();
-    this.initHeartbeat(); // 启动前端静默心跳保活
+    this.initHeartbeat();
   }
 
   initSupabaseClient() {
@@ -48,24 +48,17 @@ class DataService {
     }
   }
 
-  /**
-   * 前端心跳保活定时器：
-   * 页面打开时立即触发一次心跳，之后每 5 分钟静默向 Supabase 发送一次 Ping
-   * 确保云端 PostgreSQL 数据库保持高度活跃，彻底防止免费版暂停
-   */
   initHeartbeat() {
     this.pingHeartbeat();
     setInterval(() => {
       this.pingHeartbeat();
-    }, 5 * 60 * 1000); // 每 5 分钟
+    }, 5 * 60 * 1000);
   }
 
   async pingHeartbeat() {
     try {
       await this.apiFetch('settings?select=key&limit=1');
-    } catch (e) {
-      // 心跳静默吞掉异常，不干扰前端页面
-    }
+    } catch (e) {}
   }
 
   // ==================== REST API 通用封装 ====================
@@ -98,15 +91,18 @@ class DataService {
     return null;
   }
 
-  // ==================== 系统设置 API ====================
+  // ==================== 系统设置 API (支持实时 Upsert 读写) ====================
   async getSettings() {
-    const cloudData = await this.apiFetch('settings');
+    // 强制每次获取最新的云端数据
+    const cloudData = await this.apiFetch('settings', { query: `ts=${Date.now()}` });
     if (cloudData && Array.isArray(cloudData) && cloudData.length > 0) {
       const cloudSettings = {};
       cloudData.forEach(item => {
         cloudSettings[item.key] = item.value;
       });
-      return { ...DEFAULT_SETTINGS, ...cloudSettings };
+      const merged = { ...DEFAULT_SETTINGS, ...cloudSettings };
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(merged));
+      return merged;
     }
 
     try {
@@ -124,12 +120,24 @@ class DataService {
       const updated = { ...current, ...newSettings };
       localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
 
+      // 同步到 Supabase 云端（同时尝试 POST Upsert 和 PATCH 覆盖，确保绝对写入成功）
       for (const [key, value] of Object.entries(newSettings)) {
-        await this.apiFetch('settings', {
+        const valStr = String(value);
+        // 先尝试在数据库中 Upsert 更新
+        const upsertRes = await this.apiFetch('settings', {
           method: 'POST',
-          headers: { 'Prefer': 'resolution=merge-duplicates' },
-          body: { key, value: String(value) }
+          headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
+          body: { key, value: valStr }
         });
+
+        // 备用：若为更新操作，尝试 PATCH
+        if (!upsertRes) {
+          await this.apiFetch('settings', {
+            method: 'PATCH',
+            query: `key=eq.${key}`,
+            body: { value: valStr }
+          });
+        }
       }
 
       await this.recalculateAllFreeStatus();
