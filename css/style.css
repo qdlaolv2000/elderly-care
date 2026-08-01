@@ -1,0 +1,425 @@
+/* 适老化核心样式库 - 特大字号、高对比度、极简响应式 */
+:root {
+  --primary: #e64a19;
+  --primary-hover: #d84315;
+  --primary-light: #fbe9e7;
+  --secondary: #2e7d32;
+  --secondary-hover: #1b5e20;
+  --secondary-light: #e8f5e9;
+  --text-dark: #1f2937;
+  --text-muted: #4b5563;
+  --bg-light: #f9fafb;
+  --card-bg: #ffffff;
+  --border-color: #e5e7eb;
+  --success: #16a34a;
+  --warning: #ea580c;
+  --font-base: 22px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: var(--font-base);
+  line-height: 1.6;
+  color: var(--text-dark);
+  background-color: var(--bg-light);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.container {
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px 16px 40px 16px;
+}
+
+/* 适老化大标题 */
+header {
+  text-align: center;
+  padding: 24px 16px 16px;
+}
+
+.brand-badge {
+  display: inline-block;
+  background-color: var(--primary-light);
+  color: var(--primary);
+  font-size: 18px;
+  font-weight: bold;
+  padding: 6px 16px;
+  border-radius: 30px;
+  margin-bottom: 12px;
+}
+
+h1 {
+  font-size: 32px;
+  color: var(--text-dark);
+  font-weight: 800;
+  line-height: 1.3;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 20px;
+  color: var(--text-muted);
+}
+
+/* 优雅通俗卡片 */
+.card {
+  background: var(--card-bg);
+  border-radius: 20px;
+  padding: 28px 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0,0,0,0.04);
+  margin-bottom: 24px;
+}
+
+/* 适老化大输入框 */
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--text-dark);
+}
+
+.form-group label .required {
+  color: #dc2626;
+  margin-left: 4px;
+}
+
+.input-control {
+  width: 100%;
+  height: 64px;
+  font-size: 24px;
+  padding: 12px 20px;
+  border: 2px solid #cbd5e1;
+  border-radius: 14px;
+  background-color: #fff;
+  color: #0f172a;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-control:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(230, 74, 25, 0.15);
+}
+
+.input-hint {
+  font-size: 17px;
+  color: #64748b;
+  margin-top: 6px;
+}
+
+/* 超大醒目按钮 */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 68px;
+  font-size: 24px;
+  font-weight: 800;
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.1s active, background-color 0.2s;
+  box-shadow: 0 6px 16px rgba(230, 74, 25, 0.25);
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: #ffffff;
+}
+
+.btn-primary:active {
+  background-color: var(--primary-hover);
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  background-color: var(--secondary);
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(46, 125, 50, 0.25);
+}
+
+.btn-secondary:active {
+  background-color: var(--secondary-hover);
+  transform: scale(0.98);
+}
+
+.btn-outline {
+  background-color: transparent;
+  border: 2px solid var(--primary);
+  color: var(--primary);
+  box-shadow: none;
+}
+
+/* 福利/提示条 */
+.benefit-banner {
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  border: 2px dashed #f97316;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.benefit-title {
+  font-size: 24px;
+  font-weight: bold;
+  color: #c2410c;
+  margin-bottom: 6px;
+}
+
+.benefit-desc {
+  font-size: 20px;
+  color: #9a3412;
+}
+
+/* 推荐进度指示器 */
+.progress-box {
+  background: #f8fafc;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  border: 1px solid #e2e8f0;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.progress-title {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.progress-status {
+  font-size: 22px;
+  font-weight: bold;
+  color: var(--primary);
+}
+
+.progress-bar-bg {
+  width: 100%;
+  height: 24px;
+  background-color: #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f97316 0%, #22c55e 100%);
+  border-radius: 12px;
+  transition: width 0.5s ease;
+}
+
+/* 状态徽章 */
+.badge-free {
+  background-color: #dcfce7;
+  color: #15803d;
+  font-size: 22px;
+  padding: 8px 16px;
+  border-radius: 30px;
+  font-weight: bold;
+  display: inline-block;
+  border: 1px solid #86efac;
+}
+
+.badge-pending {
+  background-color: #fef3c7;
+  color: #b45309;
+  font-size: 20px;
+  padding: 6px 14px;
+  border-radius: 30px;
+  font-weight: bold;
+  display: inline-block;
+}
+
+/* 推荐好友列表 */
+.referral-list {
+  list-style: none;
+  margin-top: 16px;
+}
+
+.referral-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  font-size: 20px;
+}
+
+.referral-name {
+  font-weight: bold;
+}
+
+.referral-date {
+  color: #64748b;
+  font-size: 17px;
+}
+
+/* 二维码生成区域 / 弹窗 */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-content {
+  background: #fff;
+  border-radius: 24px;
+  padding: 32px 24px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+}
+
+.qrcode-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px 0;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 16px;
+  border: 1px solid #cbd5e1;
+}
+
+.qrcode-box img, .qrcode-box canvas {
+  max-width: 220px;
+  height: auto;
+}
+
+/* 页脚 */
+footer {
+  text-align: center;
+  color: #64748b;
+  font-size: 16px;
+  padding: 20px 0;
+}
+
+/* 后台管理专属样式 */
+.admin-header {
+  background: #1e293b;
+  color: #fff;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.admin-title {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: #fff;
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  border: 1px solid #e2e8f0;
+}
+
+.stat-number {
+  font-size: 36px;
+  font-weight: bold;
+  color: var(--primary);
+}
+
+.stat-label {
+  font-size: 18px;
+  color: #64748b;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  font-size: 18px;
+}
+
+.data-table th, .data-table td {
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.data-table th {
+  background-color: #f1f5f9;
+  font-weight: bold;
+  color: #334155;
+}
+
+.data-table tr:hover {
+  background-color: #f8fafc;
+}
+
+/* 浮动微信分享提示框 */
+.share-guide {
+  position: fixed;
+  top: 10px;
+  right: 20px;
+  color: white;
+  z-index: 1001;
+  text-align: right;
+  font-size: 22px;
+  font-weight: bold;
+  pointer-events: none;
+}
+
+.share-arrow {
+  font-size: 40px;
+  line-height: 1;
+}

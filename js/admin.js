@@ -1,0 +1,293 @@
+/**
+ * 后台管理逻辑 (转介绍数据统筹与修改、工人授权管理)
+ */
+
+let allUsers = [];
+let allWorkers = [];
+let currentThreshold = 5;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (window.db.isAdminAuthenticated()) {
+    unlockAdminView();
+  } else {
+    document.getElementById('adminLoginModal').classList.add('active');
+    document.getElementById('adminMainContent').style.display = 'none';
+  }
+});
+
+async function handleAdminLogin(event) {
+  event.preventDefault();
+  const passwordInput = document.getElementById('adminPassword');
+  const password = passwordInput.value.trim();
+
+  const isOk = await window.db.verifyAdminPassword(password);
+  if (isOk) {
+    unlockAdminView();
+  } else {
+    alert('密码错误！默认初始密码为 admin');
+    passwordInput.value = '';
+    passwordInput.focus();
+  }
+}
+
+async function unlockAdminView() {
+  document.getElementById('adminLoginModal').classList.remove('active');
+  document.getElementById('adminMainContent').style.display = 'block';
+  await loadAdminData();
+}
+
+function handleAdminLogout() {
+  window.db.adminLogout();
+  location.reload();
+}
+
+async function loadAdminData() {
+  const settings = await window.db.getSettings();
+  currentThreshold = parseInt(settings.referral_threshold, 10) || 5;
+  document.getElementById('thresholdInput').value = currentThreshold;
+
+  allUsers = await window.db.getAllUsers();
+  allWorkers = await window.db.getWorkers();
+
+  renderStats();
+  renderWorkers();
+  renderTable(allUsers);
+}
+
+function renderStats() {
+  const total = allUsers.length;
+  const freeCount = allUsers.filter(u => u.is_free).length;
+  const completedReferrals = allUsers.filter(u => u.status === '已完工' && u.referrer_id).length;
+
+  document.getElementById('statTotalUsers').innerText = total;
+  document.getElementById('statFreeUsers').innerText = freeCount;
+  document.getElementById('statReferrals').innerText = completedReferrals;
+  document.getElementById('statThreshold').innerText = `${currentThreshold} 人`;
+}
+
+// 渲染授权工人列表芯片卡片
+function renderWorkers() {
+  const container = document.getElementById('workerListContainer');
+  if (allWorkers.length === 0) {
+    container.innerHTML = `<div style="color: #94a3b8; font-size: 15px; padding: 6px 0;">暂无授权施工人员，请在上方输入添加</div>`;
+    return;
+  }
+
+  container.innerHTML = allWorkers.map(w => `
+    <div style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 8px 14px; border-radius: 20px; display: inline-flex; align-items: center; gap: 8px; font-size: 15px;">
+      <span>👷 <strong>${escapeHtml(w.name)}</strong> (${w.phone})</span>
+      <button onclick="handleDeleteWorker('${w.id}')" style="background: none; border: none; color: #ef4444; font-size: 16px; cursor: pointer; padding: 0 2px;" title="删除授权">
+        ✕
+      </button>
+    </div>
+  `).join('');
+}
+
+async function handleAddWorker() {
+  const nameInput = document.getElementById('newWorkerName');
+  const phoneInput = document.getElementById('newWorkerPhone');
+  
+  const name = nameInput.value.trim();
+  const phone = phoneInput.value.trim();
+
+  if (!name || !phone || phone.length < 11) {
+    alert('请输入正确的工人姓名和11位手机号码');
+    return;
+  }
+
+  const res = await window.db.addWorker({ name, phone });
+  if (res.success) {
+    nameInput.value = '';
+    phoneInput.value = '';
+    await loadAdminData();
+    alert(`✅ 已成功授权施工人员：${name}`);
+  } else {
+    alert('❌ 添加失败：' + res.error);
+  }
+}
+
+async function handleDeleteWorker(workerId) {
+  if (confirm('确定要撤销该施工人员的身份授权吗？撤销后其将无法进行完工登记。')) {
+    await window.db.deleteWorker(workerId);
+    await loadAdminData();
+  }
+}
+
+function renderTable(users) {
+  const tbody = document.getElementById('userTableBody');
+
+  if (users.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="9" style="text-align: center; color: #94a3b8; padding: 40px; font-size: 18px;">
+          尚无登记记录。您可点击右上角【🧪 加载测试模拟数据】演练查看效果。
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = users.map(user => {
+    const freeBadgeHtml = user.is_free
+      ? `<span class="badge-free" style="font-size:15px; padding:3px 8px;">🎉 免单服务</span>`
+      : `<span class="badge-pending" style="font-size:15px; padding:3px 8px;">自费待达成</span>`;
+
+    const referrerDisplay = user.referrer_name
+      ? `<strong style="color:#1d4ed8;">${user.referrer_name}</strong>`
+      : `<span style="color:#94a3b8;">自主扫码</span>`;
+
+    const count = user.referral_count || 0;
+    const isThresholdReached = count >= currentThreshold;
+    const workerDisplay = user.worker_name ? `👷 ${escapeHtml(user.worker_name)}` : '<span style="color:#94a3b8;">--</span>';
+
+    return `
+      <tr>
+        <td style="font-size: 15px; color: #64748b;">${formatDateTime(user.created_at)}</td>
+        <td><strong>${escapeHtml(user.name)}</strong></td>
+        <td>${user.phone}</td>
+        <td>${referrerDisplay}</td>
+        <td style="text-align: center;">
+          <span style="font-size: 18px; font-weight: bold; color: ${isThresholdReached ? '#16a34a' : '#ea580c'};">
+            ${count}
+          </span> / ${currentThreshold} 人
+        </td>
+        <td>${freeBadgeHtml}</td>
+        <td style="font-size: 15px;">${workerDisplay}</td>
+        <td>
+          <select 
+            onchange="updateUserStatus('${user.id}', this.value)" 
+            style="padding: 4px 8px; font-size: 15px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: bold; color: ${user.status === '已完工' ? '#16a34a' : '#334155'};"
+          >
+            <option value="已预约" ${user.status === '已预约' ? 'selected' : ''}>已预约</option>
+            <option value="施工中" ${user.status === '施工中' ? 'selected' : ''}>施工中</option>
+            <option value="已完工" ${user.status === '已完工' ? 'selected' : ''}>已完工 (交付)</option>
+            <option value="已取消" ${user.status === '已取消' ? 'selected' : ''}>已取消</option>
+          </select>
+        </td>
+        <td>
+          <button 
+            onclick="toggleManualFree('${user.id}', ${!user.is_free})" 
+            style="padding: 4px 10px; font-size: 14px; background: ${user.is_free ? '#fee2e2' : '#dcfce7'}; color: ${user.is_free ? '#991b1b' : '#166534'}; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;"
+          >
+            ${user.is_free ? '取消免费' : '手动免费'}
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function handleSearch() {
+  const query = document.getElementById('searchInput').value.toLowerCase().trim();
+  if (!query) {
+    renderTable(allUsers);
+    return;
+  }
+  const filtered = allUsers.filter(u => 
+    u.name.toLowerCase().includes(query) || 
+    u.phone.includes(query) ||
+    (u.referrer_name && u.referrer_name.toLowerCase().includes(query)) ||
+    (u.worker_name && u.worker_name.toLowerCase().includes(query))
+  );
+  renderTable(filtered);
+}
+
+async function saveAdminSettings() {
+  const val = parseInt(document.getElementById('thresholdInput').value, 10);
+  const newPass = document.getElementById('passwordInput').value.trim();
+
+  if (isNaN(val) || val < 1) {
+    alert('请输入正确的免单门槛人数！');
+    return;
+  }
+
+  const payload = { referral_threshold: val };
+  if (newPass) {
+    payload.admin_password = newPass;
+  }
+
+  const res = await window.db.updateSettings(payload);
+  if (res.success) {
+    alert('✅ 系统设置保存成功！' + (newPass ? ' 管理员新密码已生效。' : ''));
+    document.getElementById('passwordInput').value = '';
+    await loadAdminData();
+  } else {
+    alert('保存失败：' + res.error);
+  }
+}
+
+async function toggleManualFree(userId, targetFree) {
+  const res = await window.db.updateUserStatus(userId, {
+    is_free: targetFree,
+    manual_free: true
+  });
+  if (res.success) {
+    await loadAdminData();
+  }
+}
+
+async function updateUserStatus(userId, newStatus) {
+  const res = await window.db.updateUserStatus(userId, { 
+    status: newStatus,
+    worker_name: newStatus === '已完工' ? '后台管理员确认' : undefined
+  });
+  if (res.success) {
+    await loadAdminData();
+  }
+}
+
+function exportToCSV() {
+  if (allUsers.length === 0) {
+    alert('暂无可导出数据');
+    return;
+  }
+
+  const headers = ['登记时间', '姓名', '手机号', '推荐人', '完成防滑完工数', '是否免费', '施工交付工人', '施工交付状态'];
+  const rows = allUsers.map(u => [
+    formatDateTime(u.created_at),
+    u.name,
+    u.phone,
+    u.referrer_name || '自主扫码',
+    u.referral_count || 0,
+    u.is_free ? '免费' : '自费',
+    u.worker_name || '--',
+    u.status || '已预约'
+  ]);
+
+  let csvContent = '\uFEFF' + headers.join(',') + '\n';
+  rows.forEach(row => {
+    csvContent += row.map(field => `"${field}"`).join(',') + '\n';
+  });
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `适老化防滑改造登记与转介绍表_${new Date().toISOString().slice(0, 10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+async function loadDemoData() {
+  await window.db.seedDemoData();
+  await loadAdminData();
+  alert('🎉 已成功载入示例测试数据与默认授权工人！');
+}
+
+function formatDateTime(isoString) {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function escapeHtml(str) {
+  return str.replace(/[&<>"']/g, match => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[match]);
+}
+

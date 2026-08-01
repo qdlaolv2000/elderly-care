@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>工人完工登记服务台 · 适老化改造工程</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+</head>
+<body style="background-color: #f8fafc; padding-bottom: 60px;">
+
+  <!-- 顶部标题栏 -->
+  <header style="background: linear-gradient(135deg, #1e293b, #0f172a); color: white; padding: 20px 16px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+    <h1 style="font-size: 24px; font-weight: bold; margin-bottom: 4px;">👷 适老化施工交付登记</h1>
+    <p style="font-size: 15px; color: #94a3b8;">官方认证施工人员 · 防滑处理完工确认</p>
+  </header>
+
+  <div class="container" style="max-width: 540px; margin-top: 16px;">
+
+    <!-- 未验证工人身份界面 -->
+    <div id="workerAuthCard" class="card" style="display: block; border-top: 4px solid var(--primary);">
+      <div style="text-align: center; margin-bottom: 16px;">
+        <span style="font-size: 48px;">🔒</span>
+        <h2 style="font-size: 22px; margin-top: 8px; color: #1e293b;">施工人员身份验证</h2>
+        <p style="font-size: 16px; color: #64748b; margin-top: 4px;">请先验证您的姓名与手机号（须管理员后台预先授权）</p>
+      </div>
+
+      <form onsubmit="handleWorkerAuth(event)">
+        <div class="form-group">
+          <label for="workerNameInput" style="font-size: 18px;">施工师傅姓名</label>
+          <input type="text" id="workerNameInput" class="input-control" placeholder="请输入您的姓名" required style="font-size: 18px; height: 50px;">
+        </div>
+
+        <div class="form-group">
+          <label for="workerPhoneInput" style="font-size: 18px;">手机号码</label>
+          <input type="tel" id="workerPhoneInput" class="input-control" placeholder="请输入绑定的手机号" required maxlength="11" style="font-size: 18px; height: 50px;">
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="height: 52px; font-size: 20px; width: 100%; font-weight: bold;">
+          验证身份并进入完工登记
+        </button>
+      </form>
+      
+      <div style="text-align: center; margin-top: 20px;">
+        <a href="index.html" style="color: #64748b; font-size: 16px; text-decoration: underline;">返回普通用户首页</a>
+      </div>
+    </div>
+
+    <!-- 工人验证通过后的主操作界面 -->
+    <div id="workerMainContent" style="display: none;">
+      
+      <!-- 工人信息头部卡片 -->
+      <div class="card" style="background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1px solid #bfdbfe; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-size: 14px; color: #1e40af;">当前认证施工人员</div>
+          <div id="displayWorkerInfo" style="font-size: 20px; font-weight: bold; color: #1e3a8a; margin-top: 2px;">加载中...</div>
+        </div>
+        <button onclick="handleWorkerLogout()" class="btn btn-outline" style="height: 38px; font-size: 14px; padding: 0 12px; border-color: #3b82f6; color: #1d4ed8;">
+          切换师傅
+        </button>
+      </div>
+
+      <!-- 搜索定位客户卡片 -->
+      <div class="card">
+        <h2 style="font-size: 20px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+          <span>🔍 查找服务老人客户</span>
+        </h2>
+        <p style="font-size: 15px; color: #64748b; margin-bottom: 16px;">
+          请输入老人的手机号、姓名或推荐核销码进行查找定位。
+        </p>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+          <input 
+            type="text" 
+            id="searchCustomerInput" 
+            class="input-control" 
+            placeholder="输入老人姓名、手机号或核销码..." 
+            style="height: 50px; font-size: 18px; flex: 1;"
+          >
+          <button onclick="searchCustomer()" class="btn btn-primary" style="height: 50px; width: 90px; font-size: 18px; padding: 0;">
+            搜索
+          </button>
+        </div>
+      </div>
+
+      <!-- 客户匹配结果与完工操作卡片 -->
+      <div id="customerResultCard" class="card" style="display: none; border-top: 4px solid var(--secondary);">
+        <h3 style="font-size: 18px; color: #64748b; margin-bottom: 12px;">已匹配服务档案：</h3>
+        
+        <div style="background-color: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 16px;">
+          <div style="font-size: 22px; font-weight: bold; color: #1e293b;" id="custName">--</div>
+          <div style="font-size: 18px; color: #475569; margin-top: 4px;" id="custPhone">--</div>
+          
+          <hr style="border: 0; border-top: 1px dashed #cbd5e1; margin: 12px 0;">
+          
+          <div style="display: flex; justify-content: space-between; font-size: 16px; margin-bottom: 6px;">
+            <span style="color: #64748b;">转介绍推荐人：</span>
+            <span id="custReferrer" style="font-weight: bold; color: #0f172a;">无推荐人</span>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; font-size: 16px; margin-bottom: 6px;">
+            <span style="color: #64748b;">改造施工项目：</span>
+            <span style="font-weight: bold; color: var(--primary);">卫生间防滑处理施工</span>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; font-size: 16px;">
+            <span style="color: #64748b;">当前交付状态：</span>
+            <span id="custStatusBadge" class="badge-free" style="padding: 2px 10px;">--</span>
+          </div>
+        </div>
+
+        <div id="actionArea">
+          <!-- 动态渲染一键完工按钮 -->
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-top: 24px;">
+        <a href="index.html" class="btn btn-outline" style="display: inline-block; width: auto; padding: 10px 24px; font-size: 16px;">
+          ⬅️ 返回登记首页
+        </a>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="js/supabase-config.js"></script>
+  <script src="js/worker.js"></script>
+</body>
+</html>

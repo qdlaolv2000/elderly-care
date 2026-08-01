@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>受邀免费预约登记 · 适老化防滑改造</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand-badge">🤝 好友专属邀请通道</div>
+      <h1>适老化防滑改造<br>免费预约登记</h1>
+      <p class="subtitle">让老人在家行走更安全、家人更放心</p>
+    </header>
+
+    <main>
+      <!-- 好友推荐展示卡片 -->
+      <div class="benefit-banner" style="background: linear-gradient(135deg, #e8f5e9 0%, #dcfce7 100%); border-color: #22c55e;">
+        <div class="benefit-title" style="color: #15803d;" id="referrerGreeting">
+          🤝 您的好友 正在邀请您体验
+        </div>
+        <div class="benefit-desc" style="color: #166534; font-size: 19px; margin-top: 6px;">
+          登记预约后，专业施工人员将联系您提供卫生间防滑改造服务！
+        </div>
+      </div>
+
+      <!-- 极简登记卡片 -->
+      <div class="card">
+        <form id="inviteRegisterForm" onsubmit="handleInviteRegister(event)">
+          <div class="form-group">
+            <label for="inviteUserName">您的姓名 <span class="required">*</span></label>
+            <input 
+              type="text" 
+              id="inviteUserName" 
+              class="input-control" 
+              placeholder="请输入您的姓名 (如: 李阿姨)" 
+              required 
+              autocomplete="name"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="inviteUserPhone">手机号码 <span class="required">*</span></label>
+            <input 
+              type="tel" 
+              id="inviteUserPhone" 
+              class="input-control" 
+              placeholder="请输入11位手机号码" 
+              pattern="[0-9]{11}"
+              maxlength="11"
+              required 
+              autocomplete="tel"
+            >
+            <div class="input-hint">💡 手机号用于预约确认和服务工作人员上门前联系您</div>
+          </div>
+
+          <button type="submit" class="btn btn-secondary" id="inviteSubmitBtn">
+            <span>✅ 接受邀请，立即免费预约</span>
+          </button>
+        </form>
+      </div>
+    </main>
+
+    <footer>
+      <p>适老化改造服务中心 版权所有</p>
+      <p style="margin-top: 10px;">
+        <a href="worker.html" style="color: var(--primary); font-size: 15px; font-weight: bold; text-decoration: underline;">👷 施工工人完工登记入口</a>
+      </p>
+    </footer>
+  </div>
+
+  <script src="js/supabase-config.js"></script>
+  <script src="js/invite.js"></script>
+</body>
+</html>

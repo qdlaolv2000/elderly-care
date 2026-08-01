@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>后台管理系统 · 适老化改造登记与转介绍管理</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body style="background-color: #f1f5f9;">
+
+  <!-- 管理员登录弹窗 -->
+  <div id="adminLoginModal" class="modal-overlay active" style="background: rgba(15, 23, 42, 0.9);">
+    <div class="modal-content" style="max-width: 420px; padding: 40px 24px;">
+      <div style="font-size: 50px; margin-bottom: 12px;">🔒</div>
+      <h2 style="font-size: 26px; color: #1e293b; margin-bottom: 8px;">管理员身份验证</h2>
+      <p style="font-size: 18px; color: #64748b; margin-bottom: 24px;">本页面仅限项目负责人/管理员使用</p>
+      
+      <form onsubmit="handleAdminLogin(event)">
+        <div class="form-group" style="text-align: left;">
+          <label for="adminPassword" style="font-size: 18px;">管理员密码</label>
+          <input 
+            type="password" 
+            id="adminPassword" 
+            class="input-control" 
+            placeholder="请输入管理员密码" 
+            style="height: 54px; font-size: 20px;"
+            required
+            autocomplete="current-password"
+          >
+          <div class="input-hint" style="font-size: 15px; margin-top: 6px;">💡 默认初始密码为: <strong>199771</strong></div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="height: 56px; font-size: 20px;">
+          <span>🔓 验证身份登录后台</span>
+        </button>
+      </form>
+
+      <div style="margin-top: 20px;">
+        <a href="index.html" style="color: #64748b; font-size: 16px; text-decoration: underline;">返回普通用户登记首页</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 后台主界面 (验证通过后显示) -->
+  <div id="adminMainContent" style="display: none;">
+    <div class="admin-header">
+      <div class="admin-title">🛠️ 适老化改造项目 · 后台管理统筹中心</div>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <a href="index.html" class="btn btn-outline" style="height: 44px; font-size: 16px; padding: 0 16px; color: #fff; border-color: #94a3b8;">
+          回到用户首页
+        </a>
+        <button onclick="loadDemoData()" class="btn btn-secondary" style="height: 44px; font-size: 16px; padding: 0 16px;">
+          🧪 加载测试模拟数据
+        </button>
+        <button onclick="handleAdminLogout()" class="btn btn-outline" style="height: 44px; font-size: 16px; padding: 0 16px; color: #f87171; border-color: #f87171;">
+          退出管理员
+        </button>
+      </div>
+    </div>
+
+    <div style="max-width: 1240px; margin: 24px auto; padding: 0 16px;">
+
+      <!-- 顶部数据概览卡片 -->
+      <div class="admin-stats">
+        <div class="stat-card">
+          <div class="stat-number" id="statTotalUsers">0</div>
+          <div class="stat-label">总预约登记人数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="statFreeUsers" style="color: var(--secondary);">0</div>
+          <div class="stat-label">享全额免费施工人数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="statReferrals" style="color: var(--primary);">0</div>
+          <div class="stat-label">转介绍成功总人数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="statThreshold">5 人</div>
+          <div class="stat-label">当前免费达标要求</div>
+        </div>
+      </div>
+
+      <!-- 规则设置 & 数据导出区 -->
+      <div class="card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label for="thresholdInput" style="font-weight: bold; font-size: 18px;">⚙️ 免费门槛设置：</label>
+            <span>转介绍完成施工满</span>
+            <input type="number" id="thresholdInput" min="1" max="100" value="5" class="input-control" style="width: 80px; height: 44px; font-size: 18px; text-align: center;">
+            <span>人，享受免费施工</span>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label for="passwordInput" style="font-weight: bold; font-size: 18px;">🔑 修改后台密码：</label>
+            <input type="password" id="passwordInput" placeholder="新密码" class="input-control" style="width: 140px; height: 44px; font-size: 16px;">
+          </div>
+
+          <button onclick="saveAdminSettings()" class="btn btn-primary" style="height: 44px; width: auto; padding: 0 18px; font-size: 16px;">
+            保存设置
+          </button>
+        </div>
+
+        <div>
+          <button onclick="exportToCSV()" class="btn btn-secondary" style="height: 44px; width: auto; padding: 0 20px; font-size: 16px;">
+            📥 导出 Excel / CSV 数据
+          </button>
+        </div>
+      </div>
+
+      <!-- 👷 授权施工工人管理区域 -->
+      <div class="card" style="border-top: 4px solid #3b82f6;">
+        <h2 style="font-size: 22px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          <span>👷 授权施工工人管理</span>
+          <span style="font-size: 14px; font-weight: normal; color: #64748b;">(仅被授权工人可在手机扫码完工登记)</span>
+        </h2>
+
+        <div style="display: flex; gap: 12px; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap;">
+          <div>
+            <label style="font-size: 15px; font-weight: bold; margin-bottom: 4px; display: block;">工人姓名</label>
+            <input type="text" id="newWorkerName" class="input-control" placeholder="如：张师傅" style="width: 160px; height: 44px;">
+          </div>
+          <div>
+            <label style="font-size: 15px; font-weight: bold; margin-bottom: 4px; display: block;">工人手机号</label>
+            <input type="tel" id="newWorkerPhone" class="input-control" placeholder="绑定登录手机号" style="width: 200px; height: 44px;" maxlength="11">
+          </div>
+          <button onclick="handleAddWorker()" class="btn btn-primary" style="height: 44px; width: auto; padding: 0 20px; font-size: 16px;">
+            ➕ 添加施工工人
+          </button>
+        </div>
+
+        <div id="workerListContainer" style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <!-- 动态渲染工人名单芯片卡片 -->
+        </div>
+      </div>
+
+      <!-- 搜索筛选与用户数据表格 -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+          <h2 style="font-size: 24px;">📋 预约登记及转介绍明细表</h2>
+          <div style="width: 320px;">
+            <input 
+              type="text" 
+              id="searchInput" 
+              oninput="handleSearch()" 
+              class="input-control" 
+              placeholder="🔍 搜索姓名/手机号/推荐人..." 
+              style="height: 44px; font-size: 17px;"
+            >
+          </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>登记时间</th>
+                <th>姓名</th>
+                <th>手机号</th>
+                <th>推荐人 (谁转介绍的)</th>
+                <th>完成防滑完工数</th>
+                <th>免费特权</th>
+                <th>施工交付人员</th>
+                <th>服务进度状态</th>
+                <th>后台管理操作</th>
+              </tr>
+            </thead>
+            <tbody id="userTableBody">
+              <tr>
+                <td colspan="9" style="text-align: center; color: #94a3b8; padding: 30px;">
+                  正在加载数据...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="js/supabase-config.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

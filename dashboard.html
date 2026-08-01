@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>我的防滑处理预约 & 转介绍福利中心</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand-badge">已成功预约服务</div>
+      <h1 id="welcomeTitle">欢迎您，大爷/阿姨</h1>
+      <p class="subtitle" id="userPhoneDisplay">手机号：loading...</p>
+    </header>
+
+    <main>
+      <!-- 免单大卡片 (达到5人时触发) -->
+      <div id="freeBadgeCard" class="card" style="display: none; background: linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%); border: 2px solid #22c55e;">
+        <div style="text-align: center;">
+          <div style="font-size: 50px; margin-bottom: 10px;">🎉 🏆 🎉</div>
+          <h2 style="color: #15803d; font-size: 28px; margin-bottom: 8px;">恭喜您！已成功获得全额免单</h2>
+          <p style="color: #166534; font-size: 20px;">您推荐的好友已成功达到免单标准，施工人员上门服务全额免费！</p>
+        </div>
+      </div>
+
+      <!-- 转介绍进度卡片 -->
+      <div class="card">
+        <div class="progress-header">
+          <span class="progress-title">转介绍享免费施工进度</span>
+          <span class="progress-status" id="progressText">0 / 5 人</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progressBarFill" style="width: 0%;"></div>
+        </div>
+
+        <div style="margin-top: 16px; font-size: 19px; color: var(--text-muted); line-height: 1.5;" id="progressNotice">
+          再成功转介绍 <strong id="remainingCount" style="color: var(--primary); font-size: 26px;">5</strong> 位邻居朋友，即可享受免费施工服务！
+        </div>
+      </div>
+
+      <!-- 专属推荐二维码卡片 (直接默认展示，老人家无需手动点击展开) -->
+      <div class="card" style="text-align: center;">
+        <h3 style="font-size: 26px; margin-bottom: 8px; color: #1e293b;">您的专属推荐二维码</h3>
+        <p style="font-size: 19px; color: #64748b; margin-bottom: 20px;">面对面让朋友扫码，或者复制链接发送给微信好友</p>
+
+        <!-- 默认直接显示的二维码区域 -->
+        <div class="qrcode-box" id="qrcodeContainer" style="margin: 0 auto 20px auto; max-width: 240px; padding: 16px; background: #fff; border-radius: 20px; border: 2px solid #fdba74; box-shadow: 0 6px 16px rgba(249, 115, 22, 0.15);"></div>
+
+        <!-- 微信温馨提示 -->
+        <div style="background: #fff7ed; padding: 14px 16px; border-radius: 14px; margin-bottom: 20px; border: 1px dashed #fdba74; text-align: left;">
+          <p style="font-size: 19px; color: #c2410c; font-weight: bold; margin-bottom: 6px;">💡 推荐朋友小贴士：</p>
+          <p style="font-size: 18px; color: #9a3412; line-height: 1.6;">
+            1. 面对面时：直接出示上方二维码让朋友扫码<br>
+            2. 微信转发：点击微信右上角 <strong>【...】</strong> 菜单发送给朋友<br>
+            3. 复制发送：点击下方按钮复制推荐链接发送给好友
+          </p>
+        </div>
+
+        <!-- 复制链接按钮 -->
+        <button class="btn btn-secondary" onclick="copyShareLink()" id="copyLinkBtn">
+          <span>📋 复制专属推荐链接</span>
+        </button>
+
+        <button class="btn btn-outline" onclick="location.reload()" style="margin-top: 14px;">
+          <span>🔄 刷新最新推荐人数</span>
+        </button>
+      </div>
+
+      <!-- 工人完工交付专属核销码 (默认折叠收起，避免老人发错给朋友) -->
+      <div class="card" style="border: 2px dashed #94a3b8; background-color: #f8fafc; text-align: center;">
+        <button 
+          onclick="toggleCompletionQrCode()" 
+          id="toggleQrBtn" 
+          class="btn btn-outline" 
+          style="border-color: #475569; color: #334155; font-size: 18px; font-weight: bold; background: #fff;"
+        >
+          📱 展开我的完工交付核销码 (现场施工师傅使用)
+        </button>
+        <p style="font-size: 15px; color: #64748b; margin-top: 8px;">
+          ⚠️ 提示：推荐朋友请用上方“专属推荐二维码”，本核销码仅用于工人完工现场核销。
+        </p>
+
+        <!-- 默认收起的完工二维码展开框 -->
+        <div id="completionQrContainerBox" style="display: none; margin-top: 20px; padding-top: 16px; border-top: 1px dashed #cbd5e1;">
+          <div style="font-size: 18px; font-weight: bold; color: #0f172a; margin-bottom: 8px;">施工完工核销专用码</div>
+          <div class="qrcode-box" id="completionQrCodeContainer" style="margin: 0 auto 12px auto; max-width: 200px; padding: 12px; background: #fff; border-radius: 16px; border: 2px solid #3b82f6;"></div>
+          <div style="font-size: 16px; color: #1e40af; background: #eff6ff; padding: 8px; border-radius: 8px; display: inline-block;" id="completionCodeText">
+            服务单号：--
+          </div>
+        </div>
+      </div>
+
+      <!-- 已推荐好友列表 -->
+      <div class="card">
+        <h3 style="font-size: 24px; margin-bottom: 12px;">我转介绍的朋友进度明细 (<span id="friendCount">0</span>人)</h3>
+        <p style="font-size: 15px; color: #64748b; margin-bottom: 16px;">
+          注：好友需在施工完成并标记为“已完工”后，才正式计入您的全额免费达标名额。
+        </p>
+        <ul class="referral-list" id="referralList">
+          <li style="text-align: center; color: #94a3b8; padding: 20px; font-size: 18px;">
+            暂无转介绍记录，出示上方二维码给邻居朋友扫码即可参与！
+          </li>
+        </ul>
+      </div>
+    </main>
+
+    <footer>
+      <button onclick="handleLogout()" style="background: none; border: none; color: #94a3b8; font-size: 16px; text-decoration: underline; cursor: pointer;">
+        切换或重新登记手机号
+      </button>
+      <p style="margin-top: 12px; display: flex; justify-content: center; gap: 16px;">
+        <a href="worker.html" style="color: var(--primary); font-size: 15px; font-weight: bold; text-decoration: underline;">👷 施工工人完工登记入口</a>
+        <span style="color: #cbd5e1;">|</span>
+        <a href="admin.html" style="color: #94a3b8; font-size: 14px; text-decoration: underline;">后台管理入口</a>
+      </p>
+    </footer>
+  </div>
+
+  <script src="js/supabase-config.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>
