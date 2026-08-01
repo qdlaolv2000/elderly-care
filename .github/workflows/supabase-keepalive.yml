@@ -1,0 +1,26 @@
+name: Supabase Database Keep Alive (数据库保活)
+
+on:
+  schedule:
+    # 每天 UTC 0点 (北京时间早上8点) 自动执行一次心跳保活请求
+    - cron: '0 0 * * *'
+  workflow_dispatch: # 支持在 GitHub 后台手动点击触发测试
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Heartbeat Request to Supabase API
+        run: |
+          echo "Sending keep-alive ping to Supabase REST API..."
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X GET "https://geooowvgscsyffnrgelx.supabase.co/rest/v1/settings?select=key&limit=1" \
+            -H "apikey: sb_publishable_LIhLGYBQKWa6-V2cYzGSLw_Go8PWif-" \
+            -H "Authorization: Bearer sb_publishable_LIhLGYBQKWa6-V2cYzGSLw_Go8PWif-")
+          
+          echo "Supabase Response Status Code: $RESPONSE"
+          if [ "$RESPONSE" -eq 200 ] || [ "$RESPONSE" -eq 206 ]; then
+            echo "✅ Supabase 数据库心跳保活成功！"
+          else
+            echo "⚠️ 收到响应码 $RESPONSE"
+          fi

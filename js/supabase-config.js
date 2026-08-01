@@ -1,5 +1,5 @@
 /**
- * 适老化登记系统 - 云端 Supabase + 本地缓存双引擎数据服务层
+ * 适老化登记系统 - 云端 Supabase + 本地缓存双引擎数据服务层 (内置 24/7 心跳保活机制)
  */
 
 const SUPABASE_URL = 'https://geooowvgscsyffnrgelx.supabase.co';
@@ -16,13 +16,14 @@ const STORAGE_KEYS = {
 
 const DEFAULT_SETTINGS = {
   referral_threshold: 5,
-  admin_password: '199771' // 设为指定的默认管理员密码 199771
+  admin_password: '199771'
 };
 
 class DataService {
   constructor() {
     this.initSupabaseClient();
     this.initLocalStorage();
+    this.initHeartbeat(); // 启动前端静默心跳保活
   }
 
   initSupabaseClient() {
@@ -44,6 +45,26 @@ class DataService {
     }
     if (!localStorage.getItem(STORAGE_KEYS.SETTINGS)) {
       localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(DEFAULT_SETTINGS));
+    }
+  }
+
+  /**
+   * 前端心跳保活定时器：
+   * 页面打开时立即触发一次心跳，之后每 5 分钟静默向 Supabase 发送一次 Ping
+   * 确保云端 PostgreSQL 数据库保持高度活跃，彻底防止免费版暂停
+   */
+  initHeartbeat() {
+    this.pingHeartbeat();
+    setInterval(() => {
+      this.pingHeartbeat();
+    }, 5 * 60 * 1000); // 每 5 分钟
+  }
+
+  async pingHeartbeat() {
+    try {
+      await this.apiFetch('settings?select=key&limit=1');
+    } catch (e) {
+      // 心跳静默吞掉异常，不干扰前端页面
     }
   }
 
@@ -103,7 +124,6 @@ class DataService {
       const updated = { ...current, ...newSettings };
       localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
 
-      // 同步到 Supabase 云端
       for (const [key, value] of Object.entries(newSettings)) {
         await this.apiFetch('settings', {
           method: 'POST',
@@ -190,7 +210,7 @@ class DataService {
     localStorage.removeItem(STORAGE_KEYS.CURRENT_WORKER);
   }
 
-  // 管理员验证（支持固定密码 199771 或设置中的自定义密码）
+  // 管理员验证
   async verifyAdminPassword(password) {
     const settings = await this.getSettings();
     if (password === '199771' || password === settings.admin_password) {
