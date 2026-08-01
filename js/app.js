@@ -1,9 +1,21 @@
 /**
- * 首页/注册页 逻辑处理
+ * 首页/注册页 逻辑处理 (动态读取数据库免单门槛设置)
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // 1. 获取 URL 中的推荐码
+  // 1. 动态获取数据库/系统设置的免费门槛人数，并实时更新首页文案展示
+  try {
+    const settings = await window.db.getSettings();
+    const threshold = parseInt(settings.referral_threshold, 10) || 5;
+    const thresholdEl = document.getElementById('benefitThreshold');
+    if (thresholdEl) {
+      thresholdEl.innerText = `${threshold}位邻居好友`;
+    }
+  } catch (err) {
+    console.warn('获取系统免单门槛设置提示:', err);
+  }
+
+  // 2. 获取 URL 中的推荐码
   const urlParams = new URLSearchParams(window.location.search);
   const refCode = urlParams.get('ref');
 
@@ -13,10 +25,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  // 2. 检查本地是否已有登录/注册过的老用户
+  // 3. 检查本地是否已有登录/注册过的老用户
   const currentUser = window.db.getCurrentUser();
   if (currentUser && currentUser.phone) {
-    // 自动重定向到个人中心
     window.location.href = 'dashboard.html';
     return;
   }
@@ -45,7 +56,6 @@ async function handleRegister(event) {
     return;
   }
 
-  // 禁用提交按钮防止重复点击
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<span>⏳ 正在提交预约...</span>';
 
@@ -57,7 +67,6 @@ async function handleRegister(event) {
       } else {
         alert('🎉 预约成功！为您自动跳转到您的专属中心。');
       }
-      // 跳转至个人中心页
       window.location.href = 'dashboard.html';
     } else {
       alert('预约失败：' + (res.error || '系统繁忙，请重试'));
