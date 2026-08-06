@@ -65,6 +65,18 @@ ALTER TABLE public.workers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 
 -- 7. 创建允许公共读取和写入的策略
+DROP POLICY IF EXISTS "Allow public read regions" ON public.regions;
+DROP POLICY IF EXISTS "Allow public insert regions" ON public.regions;
+DROP POLICY IF EXISTS "Allow public update regions" ON public.regions;
+
+DROP POLICY IF EXISTS "Allow public read access" ON public.users;
+DROP POLICY IF EXISTS "Allow public insert access" ON public.users;
+DROP POLICY IF EXISTS "Allow public update access" ON public.users;
+
+DROP POLICY IF EXISTS "Allow public worker access" ON public.workers;
+DROP POLICY IF EXISTS "Allow public read settings" ON public.settings;
+DROP POLICY IF EXISTS "Allow public update settings" ON public.settings;
+
 CREATE POLICY "Allow public read regions" ON public.regions FOR SELECT USING (true);
 CREATE POLICY "Allow public insert regions" ON public.regions FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update regions" ON public.regions FOR UPDATE USING (true);
