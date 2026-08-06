@@ -32,6 +32,15 @@ async function refreshDashboardData() {
   document.getElementById('welcomeTitle').innerText = `欢迎您，${currentUser.name}`;
   document.getElementById('userPhoneDisplay').innerText = `手机号：${maskPhone(currentUser.phone)}`;
 
+  const userRegionCode = currentUser.region_code || 'DEFAULT';
+  const regionObj = await window.db.getRegionByCode(userRegionCode);
+  const regionName = regionObj ? regionObj.name : '默认通用区域';
+
+  const regionEl = document.getElementById('userRegionDisplay');
+  if (regionEl) {
+    regionEl.innerText = `📍 所属服务区域：${regionName}`;
+  }
+
   // 渲染进度
   document.getElementById('progressText').innerText = `${completedCount} / ${threshold} 人`;
   const percent = Math.min(100, Math.round((completedCount / threshold) * 100));
@@ -57,9 +66,9 @@ async function refreshDashboardData() {
   // 渲染好友推荐列表
   renderReferralList(referrals);
 
-  // 构造专属推荐链接并【默认渲染二维码】
+  // 构造专属推荐链接（拼接 region 参数以支持裂变继承）
   const baseUrl = window.location.origin + window.location.pathname.replace('dashboard.html', 'invite.html');
-  inviteUrl = `${baseUrl}?ref=${currentUser.referral_code}`;
+  inviteUrl = `${baseUrl}?ref=${currentUser.referral_code}&region=${userRegionCode}`;
   
   renderInlineQRCode(inviteUrl);
 }

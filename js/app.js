@@ -1,9 +1,7 @@
-/**
- * 首页/注册页 逻辑处理 (动态读取数据库免单门槛设置)
- */
+let activeRegionCode = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // 1. 动态获取数据库/系统设置的免费门槛人数，并实时更新首页文案展示
+  // 1. 动态获取数据库/系统设置的免费门槛人数
   try {
     const settings = await window.db.getSettings();
     const threshold = parseInt(settings.referral_threshold, 10) || 5;
@@ -15,17 +13,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.warn('获取系统免单门槛设置提示:', err);
   }
 
-  // 2. 获取 URL 中的推荐码
+  // 2. 解析 URL 参数
   const urlParams = new URLSearchParams(window.location.search);
   const refCode = urlParams.get('ref');
+  const regionCode = urlParams.get('region');
 
-  // 如果带推荐码，自动跳转到专属推荐注册页
+  if (regionCode) {
+    activeRegionCode = regionCode.trim().toUpperCase();
+    sessionStorage.setItem('scan_region_code', activeRegionCode);
+
+    // 查询并展示区域名称 Banner
+    const regionObj = await window.db.getRegionByCode(activeRegionCode);
+    if (regionObj) {
+      const banner = document.getElementById('regionBanner');
+      const nameText = document.getElementById('regionNameText');
+      if (banner && nameText) {
+        nameText.innerText = regionObj.name;
+        banner.style.display = 'inline-block';
+      }
+    }
+  } else {
+    // 尝试读取本地缓存中的扫码区域代码
+    activeRegionCode = sessionStorage.getItem('scan_region_code');
+  }
+
+  // 如果带推荐码，跳转到带区域参数的推荐页
   if (refCode) {
-    window.location.href = `invite.html?ref=${encodeURIComponent(refCode)}`;
+    let inviteUrl = `invite.html?ref=${encodeURIComponent(refCode)}`;
+    if (activeRegionCode) {
+      inviteUrl += `&region=${encodeURIComponent(activeRegionCode)}`;
+    }
+    window.location.href = inviteUrl;
     return;
   }
 
-  // 3. 检查本地是否已有登录/注册过的老用户
+  // 3. 检查本地是否有账号
   const currentUser = window.db.getCurrentUser();
   if (currentUser && currentUser.phone) {
     window.location.href = 'dashboard.html';
@@ -60,7 +82,11 @@ async function handleRegister(event) {
   submitBtn.innerHTML = '<span>⏳ 正在提交预约...</span>';
 
   try {
-    const res = await window.db.registerUser({ name, phone });
+    const res = await window.db.registerUser({ 
+      name, 
+      phone,
+      regionCode: activeRegionCode
+    });
     if (res.success) {
       if (!res.isNew) {
         alert(`欢迎回来，${res.user.name}！已为您载入之前的预约记录。`);

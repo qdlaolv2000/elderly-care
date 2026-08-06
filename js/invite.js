@@ -1,26 +1,31 @@
-/**
- * 被推荐人登记页面 逻辑处理
- */
-
 let refCode = null;
+let regionCode = null;
 let referrerUser = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // 1. 获取 URL 中的推荐码
+  // 1. 获取 URL 中的推荐码与区域代号
   const urlParams = new URLSearchParams(window.location.search);
   refCode = urlParams.get('ref');
+  regionCode = urlParams.get('region');
+
+  if (regionCode) {
+    sessionStorage.setItem('scan_region_code', regionCode.trim().toUpperCase());
+  }
 
   if (refCode) {
     referrerUser = await window.db.getUserByReferralCode(refCode);
     if (referrerUser) {
       document.getElementById('referrerGreeting').innerText = `🤝 您的好友【${referrerUser.name}】邀请您体验`;
+      // 若 URL 未传 region，但推荐人有 region_code，继承推荐人的区域
+      if (!regionCode && referrerUser.region_code) {
+        regionCode = referrerUser.region_code;
+      }
     }
   }
 
   // 2. 检查本地是否已有账号
   const currentUser = window.db.getCurrentUser();
   if (currentUser && currentUser.phone) {
-    // 若已登录且不是新推荐，直接跳转个人中心
     window.location.href = 'dashboard.html';
   }
 });
@@ -54,7 +59,8 @@ async function handleInviteRegister(event) {
     const res = await window.db.registerUser({
       name,
       phone,
-      referralCode: refCode
+      referralCode: refCode,
+      regionCode: regionCode || sessionStorage.getItem('scan_region_code')
     });
 
     if (res.success) {

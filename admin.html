@@ -106,6 +106,44 @@
         </div>
       </div>
 
+      <!-- 📍 区域划分与专属二维码管理 (高级权限) -->
+      <div class="card" style="border-top: 4px solid #10b981;">
+        <h2 style="font-size: 22px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span>📍 区域划分与初始化二维码管理</span>
+            <span style="font-size: 14px; font-weight: normal; color: #64748b;">(扫描对应区域二维码自动锁定并归属该区域)</span>
+          </div>
+        </h2>
+
+        <!-- 新建区域表单 -->
+        <div style="display: flex; gap: 12px; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap; background: #f8fafc; padding: 16px; borderRadius: 8px;">
+          <div>
+            <label style="font-size: 15px; font-weight: bold; margin-bottom: 4px; display: block;">区域名称</label>
+            <input type="text" id="newRegionName" class="input-control" placeholder="如：海淀中关村社区" style="width: 200px; height: 44px;">
+          </div>
+          <div>
+            <label style="font-size: 15px; font-weight: bold; margin-bottom: 4px; display: block;">区域代号 (Code)</label>
+            <input type="text" id="newRegionCode" class="input-control" placeholder="如：HD01 (大写字母+数字)" style="width: 220px; height: 44px;" style="text-transform: uppercase;">
+          </div>
+          <div>
+            <label style="font-size: 15px; font-weight: bold; margin-bottom: 4px; display: block;">区域负责人</label>
+            <input type="text" id="newRegionManager" class="input-control" placeholder="负责人姓名" style="width: 140px; height: 44px;">
+          </div>
+          <div>
+            <label style="font-size: 15px; font-weight: bold; margin-bottom: 4px; display: block;">联系电话</label>
+            <input type="tel" id="newRegionPhone" class="input-control" placeholder="负责人手机号" style="width: 160px; height: 44px;" maxlength="11">
+          </div>
+          <button onclick="handleAddRegion()" class="btn btn-primary" style="height: 44px; width: auto; padding: 0 20px; font-size: 16px; background-color: #10b981; border-color: #10b981;">
+            ➕ 新增划分区域
+          </button>
+        </div>
+
+        <!-- 区域列表展示 -->
+        <div id="regionListContainer" style="display: flex; gap: 16px; flex-wrap: wrap;">
+          <!-- 动态渲染区域芯片卡片 -->
+        </div>
+      </div>
+
       <!-- 👷 授权施工工人管理区域 -->
       <div class="card" style="border-top: 4px solid #3b82f6;">
         <h2 style="font-size: 22px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
@@ -135,7 +173,17 @@
       <!-- 搜索筛选与用户数据表格 -->
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
-          <h2 style="font-size: 24px;">📋 预约登记及转介绍明细表</h2>
+          <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+            <h2 style="font-size: 24px;">📋 预约登记及转介绍明细表</h2>
+            <!-- 📍 区域筛选器 -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <label for="regionFilter" style="font-size: 16px; font-weight: bold; color: #334155;">📍 查看区域范围：</label>
+              <select id="regionFilter" onchange="handleRegionFilterChange()" class="input-control" style="height: 40px; font-size: 16px; width: 180px; padding: 0 10px;">
+                <option value="ALL">🌐 全部区域 (汇总)</option>
+              </select>
+            </div>
+          </div>
+
           <div style="width: 320px;">
             <input 
               type="text" 
@@ -153,6 +201,7 @@
             <thead>
               <tr>
                 <th>登记时间</th>
+                <th>所属区域</th>
                 <th>姓名</th>
                 <th>手机号</th>
                 <th>推荐人 (谁转介绍的)</th>
@@ -165,7 +214,7 @@
             </thead>
             <tbody id="userTableBody">
               <tr>
-                <td colspan="9" style="text-align: center; color: #94a3b8; padding: 30px;">
+                <td colspan="10" style="text-align: center; color: #94a3b8; padding: 30px;">
                   正在加载数据...
                 </td>
               </tr>
@@ -177,6 +226,25 @@
     </div>
   </div>
 
+  <!-- 二维码显示模态框 -->
+  <div id="qrModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 440px; padding: 30px;">
+      <h3 id="qrModalTitle" style="font-size: 22px; color: #1e293b; margin-bottom: 8px;">区域初始化二维码</h3>
+      <p id="qrModalSubtitle" style="font-size: 15px; color: #64748b; margin-bottom: 20px;">扫此二维码打开系统，自动识别绑定该区域</p>
+      
+      <div id="qrCodeContainer" style="display: flex; justify-content: center; align-items: center; margin: 20px auto; width: 220px; height: 220px; background: #fff; padding: 10px; border: 1px solid #e2e8f0; border-radius: 12px;"></div>
+      
+      <div style="background: #f1f5f9; padding: 10px; border-radius: 6px; font-size: 13px; color: #475569; word-break: break-all; margin-bottom: 20px;" id="qrUrlText">
+      </div>
+
+      <div style="display: flex; gap: 12px;">
+        <button onclick="closeQrModal()" class="btn btn-outline" style="height: 44px;">关闭弹窗</button>
+        <button onclick="copyQrUrl()" class="btn btn-primary" style="height: 44px; background: #10b981; border-color: #10b981;">📋 复制专属二维码链接</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="js/supabase-config.js"></script>
   <script src="js/admin.js"></script>
 </body>

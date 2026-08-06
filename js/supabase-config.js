@@ -8,6 +8,7 @@ const SUPABASE_KEY = 'sb_publishable_LIhLGYBQKWa6-V2cYzGSLw_Go8PWif-';
 const STORAGE_KEYS = {
   USERS: 'elderly_care_users',
   WORKERS: 'elderly_care_workers',
+  REGIONS: 'elderly_care_regions',
   SETTINGS: 'elderly_care_settings',
   CURRENT_USER: 'elderly_care_current_user',
   CURRENT_WORKER: 'elderly_care_current_worker',
@@ -18,6 +19,18 @@ const DEFAULT_SETTINGS = {
   referral_threshold: 5,
   admin_password: '199771'
 };
+
+const DEFAULT_REGIONS = [
+  {
+    id: 'reg_default',
+    name: '默认通用区域',
+    code: 'DEFAULT',
+    manager_name: '系统管理员',
+    manager_phone: '13800000000',
+    status: 'active',
+    created_at: new Date().toISOString()
+  }
+];
 
 class DataService {
   constructor() {
@@ -42,6 +55,9 @@ class DataService {
     }
     if (!localStorage.getItem(STORAGE_KEYS.WORKERS)) {
       localStorage.setItem(STORAGE_KEYS.WORKERS, JSON.stringify([]));
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.REGIONS)) {
+      localStorage.setItem(STORAGE_KEYS.REGIONS, JSON.stringify(DEFAULT_REGIONS));
     }
     if (!localStorage.getItem(STORAGE_KEYS.SETTINGS)) {
       localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(DEFAULT_SETTINGS));
@@ -145,6 +161,56 @@ class DataService {
     } catch (e) {
       return { success: false, error: e.message };
     }
+  }
+
+  // ==================== 区域管理 API ====================
+  async getRegions() {
+    const cloudRegions = await this.apiFetch('regions');
+    if (cloudRegions && Array.isArray(cloudRegions) && cloudRegions.length > 0) {
+      localStorage.setItem(STORAGE_KEYS.REGIONS, JSON.stringify(cloudRegions));
+      return cloudRegions;
+    }
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.REGIONS) || JSON.stringify(DEFAULT_REGIONS));
+  }
+
+  async getRegionByCode(code) {
+    if (!code) return null;
+    const regions = await this.getRegions();
+    return regions.find(r => r.code.trim().toUpperCase() === code.trim().toUpperCase()) || null;
+  }
+
+  async createRegion({ name, code, manager_name = '', manager_phone = '' }) {
+    const cleanName = name.trim();
+    const cleanCode = code.trim().toUpperCase();
+
+    if (!cleanName || !cleanCode) {
+      return { success: false, error: '区域名称和区域代码不能为空' };
+    }
+
+    const regions = await this.getRegions();
+    if (regions.some(r => r.code.toUpperCase() === cleanCode)) {
+      return { success: false, error: '该区域代号已存在，请换一个' };
+    }
+
+    const newRegion = {
+      id: 'reg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      name: cleanName,
+      code: cleanCode,
+      manager_name: manager_name.trim(),
+      manager_phone: manager_phone.trim(),
+      status: 'active',
+      created_at: new Date().toISOString()
+    };
+
+    regions.push(newRegion);
+    localStorage.setItem(STORAGE_KEYS.REGIONS, JSON.stringify(regions));
+
+    await this.apiFetch('regions', {
+      method: 'POST',
+      body: newRegion
+    });
+
+    return { success: true, region: newRegion };
   }
 
   // 工人管理 API
@@ -283,7 +349,7 @@ class DataService {
     };
   }
 
-  async registerUser({ name, phone, referralCode = null }) {
+  async registerUser({ name, phone, referralCode = null, regionCode = null }) {
     const users = await this.getAllRawUsers();
     
     const existing = users.find(u => u.phone.trim() === phone.trim());
@@ -297,10 +363,20 @@ class DataService {
       referrer = await this.getUserByReferralCode(referralCode);
     }
 
+    // 区域确定逻辑：显式传入 > 继承推荐人区域 > 降级默认 DEFAULT
+    let targetRegionCode = regionCode ? regionCode.trim().toUpperCase() : null;
+    if (!targetRegionCode && referrer && referrer.region_code) {
+      targetRegionCode = referrer.region_code;
+    }
+    if (!targetRegionCode) {
+      targetRegionCode = 'DEFAULT';
+    }
+
     const newUser = {
       id: 'usr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
       name: name.trim(),
       phone: phone.trim(),
+      region_code: targetRegionCode,
       referrer_id: referrer ? referrer.id : null,
       referrer_name: referrer ? referrer.name : null,
       referral_code: this.generateReferralCode(),
@@ -411,15 +487,29 @@ class DataService {
     localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
   }
 
-  async getAllUsers() {
+  async getAllUsers(filterRegionCode = 'ALL') {
     const users = await this.getAllRawUsers();
     const settings = await this.getSettings();
+    const regions = await this.getRegions();
+
+    const regionMap = {};
+    regions.forEach(r => {
+      regionMap[r.code] = r.name;
+    });
 
     const userList = [];
     for (let user of users) {
+      const userRegionCode = user.region_code || 'DEFAULT';
+
+      if (filterRegionCode !== 'ALL' && userRegionCode !== filterRegionCode) {
+        continue;
+      }
+
       const { completedCount, totalCount } = await this.getReferralsByUserId(user.id);
       userList.push({
         ...user,
+        region_code: userRegionCode,
+        region_name: regionMap[userRegionCode] || '默认通用区域',
         referral_count: completedCount,
         total_referrals: totalCount,
         threshold: settings.referral_threshold
@@ -495,6 +585,7 @@ class DataService {
           id: 'usr_demo_1',
           name: '张大爷',
           phone: '13800138000',
+          region_code: 'DEFAULT',
           referrer_id: null,
           referral_code: 'ZHANG88',
           is_free: true,
@@ -507,6 +598,7 @@ class DataService {
           id: 'usr_demo_2',
           name: '李阿姨',
           phone: '13911223344',
+          region_code: 'DEFAULT',
           referrer_id: 'usr_demo_1',
           referrer_name: '张大爷',
           referral_code: 'LI6666',
@@ -520,6 +612,7 @@ class DataService {
           id: 'usr_demo_3',
           name: '王伯伯',
           phone: '13799887766',
+          region_code: 'DEFAULT',
           referrer_id: 'usr_demo_1',
           referrer_name: '张大爷',
           referral_code: 'WANG99',
@@ -533,6 +626,7 @@ class DataService {
           id: 'usr_demo_4',
           name: '孙奶奶',
           phone: '13566778899',
+          region_code: 'DEFAULT',
           referrer_id: 'usr_demo_2',
           referrer_name: '李阿姨',
           referral_code: 'SUN555',

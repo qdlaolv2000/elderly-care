@@ -4,7 +4,10 @@
 
 let allUsers = [];
 let allWorkers = [];
+let allRegions = [];
 let currentThreshold = 5;
+let currentSelectedRegion = 'ALL';
+let currentQrUrl = '';
 
 document.addEventListener('DOMContentLoaded', async () => {
   if (window.db.isAdminAuthenticated()) {
@@ -24,7 +27,7 @@ async function handleAdminLogin(event) {
   if (isOk) {
     unlockAdminView();
   } else {
-    alert('密码错误！默认初始密码为 admin');
+    alert('密码错误！');
     passwordInput.value = '';
     passwordInput.focus();
   }
@@ -46,11 +49,38 @@ async function loadAdminData() {
   currentThreshold = parseInt(settings.referral_threshold, 10) || 5;
   document.getElementById('thresholdInput').value = currentThreshold;
 
-  allUsers = await window.db.getAllUsers();
+  allRegions = await window.db.getRegions();
   allWorkers = await window.db.getWorkers();
 
+  populateRegionFilterOptions();
+  allUsers = await window.db.getAllUsers(currentSelectedRegion);
+
   renderStats();
+  renderRegions();
   renderWorkers();
+  renderTable(allUsers);
+}
+
+function populateRegionFilterOptions() {
+  const filterSelect = document.getElementById('regionFilter');
+  if (!filterSelect) return;
+
+  const options = [
+    `<option value="ALL" ${currentSelectedRegion === 'ALL' ? 'selected' : ''}>🌐 全部区域 (汇总全览)</option>`
+  ];
+
+  allRegions.forEach(r => {
+    options.push(`<option value="${r.code}" ${currentSelectedRegion === r.code ? 'selected' : ''}>📍 ${escapeHtml(r.name)} (${r.code})</option>`);
+  });
+
+  filterSelect.innerHTML = options.join('');
+}
+
+async function handleRegionFilterChange() {
+  const select = document.getElementById('regionFilter');
+  currentSelectedRegion = select.value;
+  allUsers = await window.db.getAllUsers(currentSelectedRegion);
+  renderStats();
   renderTable(allUsers);
 }
 
@@ -63,6 +93,114 @@ function renderStats() {
   document.getElementById('statFreeUsers').innerText = freeCount;
   document.getElementById('statReferrals').innerText = completedReferrals;
   document.getElementById('statThreshold').innerText = `${currentThreshold} 人`;
+}
+
+// 渲染区域列表卡片
+function renderRegions() {
+  const container = document.getElementById('regionListContainer');
+  if (!container) return;
+
+  if (allRegions.length === 0) {
+    container.innerHTML = `<div style="color: #94a3b8; font-size: 15px; padding: 6px 0;">暂无区域，请在上方创建第一个划分区域</div>`;
+    return;
+  }
+
+  container.innerHTML = allRegions.map(r => `
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-left: 4px solid #10b981; padding: 14px 18px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.03); min-width: 260px; flex: 1;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+        <h4 style="font-size: 17px; color: #1e293b; margin: 0;">📍 ${escapeHtml(r.name)}</h4>
+        <span style="background: #dcfce7; color: #15803d; font-size: 12px; font-weight: bold; padding: 2px 6px; border-radius: 4px;">${r.code}</span>
+      </div>
+      <div style="font-size: 14px; color: #64748b; margin-bottom: 10px;">
+        👤 负责人: ${escapeHtml(r.manager_name || '未设置')} ${r.manager_phone ? '(' + r.manager_phone + ')' : ''}
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button onclick="showQrModal('${r.code}', '${escapeHtml(r.name)}')" class="btn btn-primary" style="height: 36px; padding: 0 12px; font-size: 14px; background: #10b981; border-color: #10b981;">
+          📷 初始二维码
+        </button>
+        <button onclick="filterByRegion('${r.code}')" class="btn btn-outline" style="height: 36px; padding: 0 12px; font-size: 14px; color: #0f766e; border-color: #0f766e;">
+          🔍 查看本区数据
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function handleAddRegion() {
+  const nameInput = document.getElementById('newRegionName');
+  const codeInput = document.getElementById('newRegionCode');
+  const managerInput = document.getElementById('newRegionManager');
+  const phoneInput = document.getElementById('newRegionPhone');
+
+  const name = nameInput.value.trim();
+  const code = codeInput.value.trim().toUpperCase();
+  const manager_name = managerInput.value.trim();
+  const manager_phone = phoneInput.value.trim();
+
+  if (!name || !code) {
+    alert('请输入区域名称和区域代号（例如：HD01）');
+    return;
+  }
+
+  const res = await window.db.createRegion({ name, code, manager_name, manager_phone });
+  if (res.success) {
+    nameInput.value = '';
+    codeInput.value = '';
+    managerInput.value = '';
+    phoneInput.value = '';
+    await loadAdminData();
+    alert(`✅ 已成功划分新区域：${name} (${code})`);
+  } else {
+    alert('❌ 添加失败：' + res.error);
+  }
+}
+
+function filterByRegion(regionCode) {
+  currentSelectedRegion = regionCode;
+  const select = document.getElementById('regionFilter');
+  if (select) select.value = regionCode;
+  handleRegionFilterChange();
+}
+
+function showQrModal(regionCode, regionName) {
+  const baseUrl = window.location.href.split('admin.html')[0];
+  const url = `${baseUrl}index.html?region=${regionCode}`;
+  currentQrUrl = url;
+
+  document.getElementById('qrModalTitle').innerText = `📍 【${regionName}】初始化二维码`;
+  document.getElementById('qrUrlText').innerText = url;
+
+  const container = document.getElementById('qrCodeContainer');
+  container.innerHTML = '';
+
+  if (window.QRCode) {
+    new window.QRCode(container, {
+      text: url,
+      width: 200,
+      height: 200,
+      colorDark: '#0f172a',
+      colorLight: '#ffffff',
+      correctLevel: window.QRCode.CorrectLevel.H
+    });
+  } else {
+    // CDN 未完成下载或离线时的原生 SVG 二维码降级
+    container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}" alt="QR Code" style="width: 200px; height: 200px;" />`;
+  }
+
+  document.getElementById('qrModal').classList.add('active');
+}
+
+function closeQrModal() {
+  document.getElementById('qrModal').classList.remove('active');
+}
+
+function copyQrUrl() {
+  if (!currentQrUrl) return;
+  navigator.clipboard.writeText(currentQrUrl).then(() => {
+    alert('📋 区域专属二维码链接已成功复制到剪贴板！');
+  }).catch(() => {
+    prompt('请手动复制链接：', currentQrUrl);
+  });
 }
 
 // 渲染授权工人列表芯片卡片
@@ -119,7 +257,7 @@ function renderTable(users) {
   if (users.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="9" style="text-align: center; color: #94a3b8; padding: 40px; font-size: 18px;">
+        <td colspan="10" style="text-align: center; color: #94a3b8; padding: 40px; font-size: 18px;">
           尚无登记记录。您可点击右上角【🧪 加载测试模拟数据】演练查看效果。
         </td>
       </tr>
@@ -139,10 +277,12 @@ function renderTable(users) {
     const count = user.referral_count || 0;
     const isThresholdReached = count >= currentThreshold;
     const workerDisplay = user.worker_name ? `👷 ${escapeHtml(user.worker_name)}` : '<span style="color:#94a3b8;">--</span>';
+    const regionBadge = `<span style="background: #e0f2fe; color: #0369a1; font-weight: bold; padding: 3px 8px; border-radius: 6px; font-size: 14px;">📍 ${escapeHtml(user.region_name || '默认通用区域')}</span>`;
 
     return `
       <tr>
         <td style="font-size: 15px; color: #64748b;">${formatDateTime(user.created_at)}</td>
+        <td>${regionBadge}</td>
         <td><strong>${escapeHtml(user.name)}</strong></td>
         <td>${user.phone}</td>
         <td>${referrerDisplay}</td>
@@ -187,7 +327,8 @@ function handleSearch() {
     u.name.toLowerCase().includes(query) || 
     u.phone.includes(query) ||
     (u.referrer_name && u.referrer_name.toLowerCase().includes(query)) ||
-    (u.worker_name && u.worker_name.toLowerCase().includes(query))
+    (u.worker_name && u.worker_name.toLowerCase().includes(query)) ||
+    (u.region_name && u.region_name.toLowerCase().includes(query))
   );
   renderTable(filtered);
 }
@@ -242,9 +383,10 @@ function exportToCSV() {
     return;
   }
 
-  const headers = ['登记时间', '姓名', '手机号', '推荐人', '完成防滑完工数', '是否免费', '施工交付工人', '施工交付状态'];
+  const headers = ['登记时间', '所属区域', '姓名', '手机号', '推荐人', '完成防滑完工数', '是否免费', '施工交付工人', '施工交付状态'];
   const rows = allUsers.map(u => [
     formatDateTime(u.created_at),
+    u.region_name || '默认通用区域',
     u.name,
     u.phone,
     u.referrer_name || '自主扫码',
